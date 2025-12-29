@@ -1,6 +1,6 @@
-# MahaSeva Copilot v_FINAL_DEPLOYED: For deploying to Streamlit Cloud.
-# This version has NO hardcoded paths and uses the hardened prompts to fix the AI hallucination bug.
-# This is the definitive, correct code for deployment.
+# MahaSeva Copilot v_FINAL_CLOUD: Your Original Logic, for Streamlit Cloud.
+# This version restores your original, simple, working logic and prompts.
+# All hardcoded paths have been removed for deployment. This is the definitive code.
 
 import streamlit as st
 import google.generativeai as genai
@@ -13,8 +13,7 @@ from PIL import Image
 import os
 
 # --- OCR and PDF Engine Configuration (FOR DEPLOYMENT) ---
-# All hardcoded Windows paths are REMOVED. The server will find the programs automatically
-# because of the packages.txt file.
+# All hardcoded Windows paths are REMOVED. The server will find the programs automatically.
 
 
 # --- Configuration and Setup ---
@@ -82,33 +81,28 @@ LANGUAGES = {
     }
 }
 
-# --- BILINGUAL, HARDENED PROMPTS ---
+# --- YOUR ORIGINAL, WORKING PROMPTS ---
 
-AUTO_EXTRACT_PROMPT_MR = """
-You are a precise and factual AI assistant. Your output must be in Marathi.
-Your single most important rule is to use **ONLY** the information from the GR Text provided below.
+AUTO_EXTRACT_PROMPT_TEMPLATE = """
+You are an expert AI assistant for parsing Government of Maharashtra documents.
+Based *only* on the content of the provided Government Resolution (GR) text, perform these tasks and format the output *exactly* as specified below.
 
-**CRITICAL RULES:**
-1.  **DO NOT** invent information.
-2.  **DO NOT** use any external knowledge.
-3.  **DO NOT** make assumptions. If the GR is about a scheme for women, you must not mention farmers or any other group. Your answer must be 100% based on the text.
-
-Based *only* on the GR Text, perform these tasks and format the output *exactly* as specified below.
+**Do not add any introductory or concluding sentences. Only provide the structure below.**
 
 ### पात्रता निकष (Eligibility Criteria)
-- [List all eligibility points here as a bulleted list in Marathi.]
+- [List all eligibility points here as a bulleted list. Each point on a new line.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 ---
 
 ### अपात्रता निकष (Ineligibility Criteria)
-- [List all ineligibility points here as a bulleted list in Marathi.]
+- [List all ineligibility points here as a bulleted list. Each point on a new line.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 ---
 
 ### आवश्यक कागदपत्रे (Required Documents)
-- [List all required documents here as a bulleted list in Marathi.]
+- [List all required documents here as a bulleted list. Each point on a new line.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 GR Text:
@@ -117,62 +111,14 @@ GR Text:
 ---
 """
 
-AUTO_EXTRACT_PROMPT_EN = """
-You are a precise and factual AI assistant. Your output must be in English.
-Your single most important rule is to use **ONLY** the information from the GR Text provided below.
-
-**CRITICAL RULES:**
-1.  **DO NOT** invent information.
-2.  **DO NOT** use any external knowledge.
-3.  **DO NOT** make assumptions. If the GR is about a scheme for women, you must not mention farmers or any other group. Your answer must be 100% based on the text.
-
-Based *only* on the GR Text, perform these tasks and format the output *exactly* as specified below.
-
-### Eligibility Criteria (पात्रता निकष)
-- [List all eligibility points here as a bulleted list in English.]
-- [If no information is found, you MUST write "Information not available"]
-
----
-
-### Ineligibility Criteria (अपात्रता निकष)
-- [List all ineligibility points here as a bulleted list in English.]
-- [If no information is found, you MUST write "Information not available"]
-
----
-
-### Required Documents (आवश्यक कागदपत्रे)
-- [List all required documents here as a bulleted list in English.]
-- [If no information is found, you MUST write "Information not available"]
-
-GR Text:
----
-{input_text}
----
-"""
-
-WHATSAPP_SUMMARY_PROMPT_EN = """
-You are "MahaSeva Copilot," an AI assistant. Your task is to convert the following structured information into a simple, viral, and easy-to-read WhatsApp message in English.
-Your summary must be based **ONLY** on the information provided below.
-
-- Start with a catchy header with emojis (e.g., 📢 *Important Government Scheme Alert!*).
-- Summarize the key points for Eligibility (✅ Eligibility), and Documents (📄 Documents).
-- Use simple words, a bulleted list (using ● or ▪), and relevant emojis.
-- End with a call to action to share the message (e.g., *Please share this information with everyone!* 🙏).
-
-Structured Information:
----
-{input_text}
----
-"""
-
-WHATSAPP_SUMMARY_PROMPT_MR = """
-You are "MahaSeva Copilot," an AI assistant. Your task is to convert the following structured information into a simple, viral, and easy-to-read WhatsApp message in Marathi.
-Your summary must be based **ONLY** on the information provided below.
+WHATSAPP_SUMMARY_PROMPT_TEMPLATE = """
+You are "MahaSeva Copilot," an AI assistant. Your task is to convert the following structured information about a government scheme into a simple, viral, and easy-to-read WhatsApp message in {language}.
 
 - Start with a catchy header with emojis (e.g., 📢 *योजनेची महत्त्वाची माहिती!*).
 - Summarize the key points for Eligibility (✅ पात्रता), and Documents (📄 कागदपत्रे).
 - Use simple words, a bulleted list (using ● or ▪), and relevant emojis.
 - End with a call to action to share the message (e.g., *ही माहिती सर्वांपर्यंत पोहोचवा!* 🙏).
+- The entire message should be friendly and helpful for a rural audience.
 
 Structured Information:
 ---
@@ -180,40 +126,19 @@ Structured Information:
 ---
 """
 
-PROMPT_TEMPLATES = {
-    "en": {
-        "AUTO_EXTRACT": AUTO_EXTRACT_PROMPT_EN,
-        "WHATSAPP_SUMMARY": WHATSAPP_SUMMARY_PROMPT_EN
-    },
-    "mr": {
-        "AUTO_EXTRACT": AUTO_EXTRACT_PROMPT_MR,
-        "WHATSAPP_SUMMARY": WHATSAPP_SUMMARY_PROMPT_MR
-    }
-}
-
 
 # --- Core AI and Helper Functions ---
 
-def get_gemini_response(final_prompt):
+def get_gemini_response(input_text, prompt_template):
     try:
         model = genai.GenerativeModel('models/gemini-flash-latest')
-        response = model.generate_content(final_prompt)
+        response = model.generate_content(prompt_template.format(input_text=input_text))
         return response.text if response.text and response.text.strip() else None
     except Exception as e:
         st.error(f"An error occurred with the Gemini API: {e}")
         return None
 
 def extract_text_from_pdf_robust(uploaded_file, T):
-    def ocr_with_spinner(file_bytes):
-        with st.spinner(T["processing_ocr"]):
-            # The poppler_path argument is REMOVED for deployment
-            images = convert_from_bytes(file_bytes)
-            full_text = ""
-            for img in images:
-                # The config argument is REMOVED for deployment
-                full_text += pytesseract.image_to_string(img, lang='mar+eng') + "\n"
-        return full_text
-
     try:
         reader = pdf.PdfReader(uploaded_file)
         text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
@@ -223,9 +148,15 @@ def extract_text_from_pdf_robust(uploaded_file, T):
         pass
 
     try:
-        uploaded_file.seek(0)
-        file_bytes = uploaded_file.read()
-        full_text = ocr_with_spinner(file_bytes)
+        with st.spinner(T["processing_ocr"]):
+            uploaded_file.seek(0)
+            # The poppler_path argument is REMOVED for deployment
+            images = convert_from_bytes(uploaded_file.read())
+            
+            full_text = ""
+            for img in images:
+                # The config argument is REMOVED for deployment
+                full_text += pytesseract.image_to_string(img, lang='mar+eng') + "\n"
         return full_text if full_text and full_text.strip() else None
     except Exception as e:
         st.error(f"PDF PROCESSING ERROR: {e}. Please ensure Tesseract and Poppler are correctly placed and paths are correct.")
@@ -236,10 +167,9 @@ def extract_text_from_pdf_robust(uploaded_file, T):
 if 'lang' not in st.session_state:
     st.session_state.lang = "mr"
 
-# This simple logic is restored to prevent the blank screen bug.
+# This is your original, simple UI logic.
 T = LANGUAGES[st.session_state.lang]
 
-# This is your original, simple UI.
 st.title(T["title"])
 st.markdown(T["subtitle"])
 
@@ -278,19 +208,16 @@ if uploaded_file is not None:
         
         with st.spinner(T["processing_gr"]):
             pdf_text = extract_text_from_pdf_robust(uploaded_file, T)
-                
+            
             if pdf_text:
-                auto_extract_prompt_template = PROMPT_TEMPLATES[st.session_state.lang]["AUTO_EXTRACT"]
-                full_extract_prompt = auto_extract_prompt_template.format(input_text=pdf_text)
-                
-                extracted_data = get_gemini_response(full_extract_prompt)
+                extracted_data = get_gemini_response(pdf_text, AUTO_EXTRACT_PROMPT_TEMPLATE)
                 st.session_state.extracted_data = extracted_data
-                
                 if extracted_data:
-                    whatsapp_prompt_template = PROMPT_TEMPLATES[st.session_state.lang]["WHATSAPP_SUMMARY"]
-                    full_whatsapp_prompt = whatsapp_prompt_template.format(input_text=extracted_data)
-                    
-                    whatsapp_message = get_gemini_response(full_whatsapp_prompt)
+                    language_name = "Marathi" if st.session_state.lang == "mr" else "English"
+                    whatsapp_prompt = WHATSAPP_SUMMARY_PROMPT_TEMPLATE.format(
+                        language=language_name, input_text=extracted_data
+                    )
+                    whatsapp_message = get_gemini_response(extracted_data, whatsapp_prompt)
                     st.session_state.whatsapp_message = whatsapp_message
                 st.success(T["upload_success"], icon="✅")
             else:
@@ -306,7 +233,7 @@ if uploaded_file is not None:
             st.header(T["whatsapp_header"])
             if st.session_state.get('whatsapp_message'):
                 st.text_area(
-                    T["whatsapp_copy_label"], st.session_state.whatsapp_message, height=400
+                    T["whatsapp_copy_label"], st.session_state.whatsapp_message, height=350
                 )
                 st.success(T["whatsapp_success"], icon="✅")
             else:
