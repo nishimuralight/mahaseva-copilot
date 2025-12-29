@@ -88,7 +88,7 @@ LANGUAGES = {
 
 def get_gemini_response(input_text, prompt_template):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-flash-latest')
         response = model.generate_content(prompt_template.format(input_text=input_text))
         return response.text if response.text and response.text.strip() else None
     except Exception as e:
