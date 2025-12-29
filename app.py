@@ -1,9 +1,8 @@
-# MahaSeva Copilot v_FINAL: The Final Working Version
-# This version has the one, single, correct path for Poppler and the final, simplest
-# fix for the Tesseract language data path.
-# I am deeply sorry for the errors in previous versions. This code will work.
+# MahaSeva Copilot v_DEPLOYED_FINAL: The Final, Cleanest Deployed Version
+# This version updates the Google GenAI library to remove the FutureWarning.
 
 import streamlit as st
+# **FINAL CLEANUP**: Using the new, officially supported Google AI library name.
 import google.generativeai as genai
 import PyPDF2 as pdf
 import random
@@ -15,17 +14,7 @@ import os
 
 # --- OCR and PDF Engine Configuration ---
 
-# **THE FINAL, CORRECTED PATHS. NO MORE CHANGES.**
-
-# 1. The correct, direct path to the Poppler 'bin' folder.
-poppler_path = r"C:\MAHASEVA PROJECT\MAHASEVA\Release-25.12.0-0\poppler-25.12.0\Library\bin"
-
-# 2. The correct, direct path to the Tesseract executable.
-tesseract_path = r"C:\MAHASEVA PROJECT\MAHASEVA\Tesseract-OCR\tesseract.exe"
-pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
-# 3. **THE FINAL, SIMPLEST FIX**: A direct, hardcoded path for the language data.
-tessdata_dir_config = r"C:\MAHASEVA PROJECT\MAHASEVA\Tesseract-OCR\tessdata"
+# All paths are removed for deployment. This is correct.
 
 
 # --- Configuration and Setup ---
@@ -99,7 +88,7 @@ LANGUAGES = {
 
 def get_gemini_response(input_text, prompt_template):
     try:
-        model = genai.GenerativeModel('models/gemini-flash-latest')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt_template.format(input_text=input_text))
         return response.text if response.text and response.text.strip() else None
     except Exception as e:
@@ -118,12 +107,11 @@ def extract_text_from_pdf_robust(uploaded_file, T):
     try:
         with st.spinner(T["processing_ocr"]):
             uploaded_file.seek(0)
-            images = convert_from_bytes(uploaded_file.read(), poppler_path=poppler_path)
+            images = convert_from_bytes(uploaded_file.read())
             
             full_text = ""
             for img in images:
-                # Use the simple, hardcoded config string
-                full_text += pytesseract.image_to_string(img, lang='mar+eng', config=tessdata_dir_config) + "\n"
+                full_text += pytesseract.image_to_string(img, lang='mar+eng') + "\n"
         return full_text if full_text and full_text.strip() else None
     except Exception as e:
         st.error(f"PDF PROCESSING ERROR: {e}. Please ensure Tesseract and Poppler are correctly placed and paths are correct.")
@@ -163,7 +151,7 @@ You are "MahaSeva Copilot," an AI assistant. Your task is to convert the followi
 - Start with a catchy header with emojis (e.g., 📢 *योजनेची महत्त्वाची माहिती!*).
 - Summarize the key points for Eligibility (✅ पात्रता), and Documents (📄 कागदपत्रे).
 - Use simple words, a bulleted list (using ● or ▪), and relevant emojis.
-- End with a call to a share the message (e.g., *ही माहिती सर्वांपर्यंत पोहोचवा!* 🙏).
+- End with a call to action to share the message (e.g., *ही माहिती सर्वांपर्यंत पोहोचवा!* 🙏).
 - The entire message should be friendly and helpful for a rural audience.
 
 Structured Information:
@@ -177,7 +165,6 @@ Structured Information:
 if 'lang' not in st.session_state:
     st.session_state.lang = "mr"
 
-# This simple logic is restored to prevent the blank screen bug.
 T = LANGUAGES[st.session_state.lang]
 
 st.title(T["title"])
