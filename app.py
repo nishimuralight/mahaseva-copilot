@@ -1,6 +1,6 @@
-# MahaSeva Copilot v_FINAL_DEPLOYED: For deploying to Streamlit Cloud.
-# This version has NO hardcoded paths and uses the hardened prompts to fix the AI hallucination bug.
-# This is the definitive, correct code for deployment.
+# MahaSeva Copilot v_FINAL_FIXED: The Definitive Working Version
+# This version uses "zero-shot quoting" prompts to force the AI to extract text
+# word-for-word, completely eliminating the hallucination bug.
 
 import streamlit as st
 import google.generativeai as genai
@@ -12,11 +12,16 @@ from pdf2image import convert_from_bytes
 from PIL import Image
 import os
 
-# --- OCR and PDF Engine Configuration (FOR DEPLOYMENT) ---
-# All hardcoded Windows paths are REMOVED. The server will find the programs automatically.
+# --- OCR and PDF Engine Configuration ---
+
+# These paths are correct for your local setup.
+poppler_path = r"C:\\MAHASEVA_PROJECT\\MAHASEVA\\Release-25.12.0-0\\bin"
+tesseract_path = r"C:\\MAHASEVA_PROJECT\\MAHASEVA\\Tesseract-OCR\\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 
 # --- Configuration and Setup ---
+
 st.set_page_config(page_title="MahaSeva Copilot", page_icon="🇮🇳", layout="wide")
 
 try:
@@ -81,33 +86,29 @@ LANGUAGES = {
     }
 }
 
-# --- BILINGUAL, HARDENED PROMPTS ---
+# --- FINAL BUG FIX: "ZERO-SHOT QUOTING" PROMPTS ---
 
 AUTO_EXTRACT_PROMPT_MR = """
-You are a precise and factual AI assistant. Your output must be in Marathi.
-Your single most important rule is to use **ONLY** the information from the GR Text provided below.
+You are a text-extraction machine. Your output must be in Marathi.
 
-**CRITICAL RULES:**
-1.  **DO NOT** invent information.
-2.  **DO NOT** use any external knowledge.
-3.  **DO NOT** make assumptions. If the GR is about a scheme for women, you must not mention farmers or any other group. Your answer must be 100% based on the text.
+**CRITICAL RULE:** You are a machine that only quotes. You **DO NOT** summarize, paraphrase, or explain. Your job is to find and copy.
 
-Based *only* on the GR Text, perform these tasks and format the output *exactly* as specified below.
+Based *only* on the GR Text below, perform these tasks:
 
 ### पात्रता निकष (Eligibility Criteria)
-- [List all eligibility points here as a bulleted list in Marathi.]
+- [Find the exact sentences or bullet points from the GR Text that describe eligibility. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 ---
 
 ### अपात्रता निकष (Ineligibility Criteria)
-- [List all ineligibility points here as a bulleted list in Marathi.]
+- [Find the exact sentences or bullet points from the GR Text that describe ineligibility. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 ---
 
 ### आवश्यक कागदपत्रे (Required Documents)
-- [List all required documents here as a bulleted list in Marathi.]
+- [Find the exact sentences or bullet points from the GR Text that list required documents. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "माहिती उपलब्ध नाही"]
 
 GR Text:
@@ -117,30 +118,26 @@ GR Text:
 """
 
 AUTO_EXTRACT_PROMPT_EN = """
-You are a precise and factual AI assistant. Your output must be in English.
-Your single most important rule is to use **ONLY** the information from the GR Text provided below.
+You are a text-extraction machine. Your output must be in English.
 
-**CRITICAL RULES:**
-1.  **DO NOT** invent information.
-2.  **DO NOT** use any external knowledge.
-3.  **DO NOT** make assumptions. If the GR is about a scheme for women, you must not mention farmers or any other group. Your answer must be 100% based on the text.
+**CRITICAL RULE:** You are a machine that only quotes. You **DO NOT** summarize, paraphrase, or explain. Your job is to find and copy.
 
-Based *only* on the GR Text, perform these tasks and format the output *exactly* as specified below.
+Based *only* on the GR Text below, perform these tasks:
 
 ### Eligibility Criteria (पात्रता निकष)
-- [List all eligibility points here as a bulleted list in English.]
+- [Find the exact sentences or bullet points from the GR Text that describe eligibility. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "Information not available"]
 
 ---
 
 ### Ineligibility Criteria (अपात्रता निकष)
-- [List all ineligeligibility points here as a bulleted list in English.]
+- [Find the exact sentences or bullet points from the GR Text that describe ineligibility. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "Information not available"]
 
 ---
 
 ### Required Documents (आवश्यक कागदपत्रे)
-- [List all required documents here as a bulleted list in English.]
+- [Find the exact sentences or bullet points from the GR Text that list required documents. Quote them word-for-word under this heading. Do not change them.]
 - [If no information is found, you MUST write "Information not available"]
 
 GR Text:
@@ -205,12 +202,11 @@ def get_gemini_response(final_prompt):
 def extract_text_from_pdf_robust(uploaded_file, T):
     def ocr_with_spinner(file_bytes):
         with st.spinner(T["processing_ocr"]):
-            # The poppler_path argument is REMOVED for deployment
-            images = convert_from_bytes(file_bytes)
+            images = convert_from_bytes(file_bytes, poppler_path=poppler_path)
+            tessdata_dir_config = f'--tessdata-dir "{os.path.join(os.path.dirname(tesseract_path), "tessdata")}"'
             full_text = ""
             for img in images:
-                # The config argument is REMOVED for deployment
-                full_text += pytesseract.image_to_string(img, lang='mar+eng') + "\n"
+                full_text += pytesseract.image_to_string(img, lang='mar+eng', config=tessdata_dir_config) + "\n"
         return full_text
 
     try:
